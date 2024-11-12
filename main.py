@@ -54,28 +54,13 @@ def get_documents_from_bd():
     host = os.getenv("DB_HOST")
     db = os.getenv("DB_NAME")
     connection_string = f"mongodb+srv://{user}:{password}@{host}/{db}?retryWrites=true&w=majority"
-    # loaderUsers = CustomMongodbLoader(
-    # connection_string=connection_string,
-    # db_name="ProyectosU",
-    # collection_name="users",
-    # projection={
-    #     "userName": 1,
-    #     "email": 1,
-    #     "phone": 1,
-    #     "apartment": 1,
-    #     "pets.name": 1,
-    #     "pets.type": 1,
-    #     "vehicles.model": 1,
-    #     "vehicles.plate": 1,
-    # }
-    # )
+
     loaderUsers = MongodbLoader(
     connection_string=connection_string,
     db_name="ProyectosU",
     collection_name="users",
     field_names=["userName", "email", "phone", "apartment", "pets", "vehicles"],
     )
-    # docsUsers = list(loaderUsers.lazy_load())
     docsUsers = loaderUsers.load()
 
     loaderAnnouncements = MongodbLoader(
@@ -100,14 +85,13 @@ def get_documents_from_bd():
         "zones.availableHours": 1,
     }
     )
-    # Carga los documentos utilizando el método lazy_load
     docsComplexes = list(loaderComplexes.lazy_load())
     
     loaderAnnouncements = MongodbLoader(
     connection_string=connection_string,
     db_name="ProyectosU",
     collection_name="directories",
-    field_names=["service", "phone", "whatsAppNumber"],
+    field_names=["service", "phone", "location", "whatsAppNumber"],
     )
     docsDirectories = loaderAnnouncements.load()
 
@@ -139,15 +123,15 @@ def create_chain(vectorStore):
     )
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", """Answer the user's questions based on the context: {context} 
-        Never mention that the information comes from a context
-        If you can't find the information in the context, reply "I don't have that information.
+        ("system", """El usuario es un administrador de unidades residenciales, así que dirigete a él como "Administrador".
+        Responde a las preguntas basándote en el contexto: {context} 
+        Y preguntandole si necesita ayuda con algo más. Nunca menciones que la información proviene de un contexto.
+        Si no puedes encontrar la información en el contexto, responde "No tengo esa información.
         """),
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}")
     ])
 
-    # chain = prompt | model
     chain = create_stuff_documents_chain(
         llm=model,
         prompt=prompt
@@ -158,7 +142,7 @@ def create_chain(vectorStore):
     retriever_prompt = ChatPromptTemplate.from_messages([
         MessagesPlaceholder(variable_name="chat_history"),
         ("human", "{input}"),
-        ("human", "Given the above conversation, generate a search query to look up in order to get information relevant to the conversation")
+        ("human", "Dada la conversación anterior, genera una consulta de búsqueda para obtener información relevante para la conversación")
     ])
 
     history_aware_retriever = create_history_aware_retriever(
@@ -168,7 +152,6 @@ def create_chain(vectorStore):
     )
 
     retrieval_chain = create_retrieval_chain(
-        # retriever,
         history_aware_retriever,
         chain
     )
@@ -180,7 +163,7 @@ def process_chat(chain, question, chat_history):
         "input": question,
         "chat_history": chat_history
     })
-    return response["answer"] + " ¿Algo más en lo que te pueda ayudar?"
+    return response["answer"]
 
 app=Flask(__name__)
 
@@ -201,7 +184,7 @@ def createInput():
     chat_history.append(HumanMessage(content=user_input))
     chat_history.append(AIMessage(content=response))
 
-    res = "Assistant:" + response
+    res = response
     return jsonify(res), 200
 
 if __name__ == '__main__':
