@@ -173,19 +173,21 @@ def root():
 
 @app.route('/ia/input', methods=['POST'])
 def createInput():
-    docs = get_documents_from_bd()
-    vectorStore = create_db(docs)
-    chain = create_chain(vectorStore)
+    try :
+        docs = get_documents_from_bd()
+        vectorStore = create_db(docs)
+        chain = create_chain(vectorStore)
 
-    chat_history = []
-    user_input = request.json['input']
+        chat_history = []
+        user_input = request.json['input']
 
-    response = process_chat(chain, user_input, chat_history)
-    chat_history.append(HumanMessage(content=user_input))
-    chat_history.append(AIMessage(content=response))
+        response = process_chat(chain, user_input, chat_history)
+        chat_history.append(HumanMessage(content=user_input))
+        chat_history.append(AIMessage(content=response))
 
-    res = response
-    return jsonify(res), 200
+        return jsonify({"response": response}), 200
+    except Exception as e:
+        return jsonify(str(e)), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
