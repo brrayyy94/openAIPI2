@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from flask_cors import CORS
 load_dotenv()
 import os
 
@@ -166,6 +167,7 @@ def process_chat(chain, question, chat_history):
     return response["answer"]
 
 app=Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def root():
